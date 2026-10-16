@@ -1,0 +1,59 @@
+# 构建 Vite 项目并把 dist/ 发布到 GitHub Pages
+name: Deploy to GitHub Pages
+
+on:
+  # 推送到默认分支（main）时自动部署
+  push:
+    branches: ["main"]
+  # 也允许在 Actions 页面手动触发
+  workflow_dispatch:
+
+# 授予 GITHUB_TOKEN 部署 Pages 所需的权限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只允许一个 Pages 部署；不取消正在进行的生产部署
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build static site
+        run: npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # 只发布构建产物，不再上传整个仓库
+          path: dist
+
+  deploy:
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
